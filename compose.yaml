@@ -1,0 +1,34 @@
+# Локальний запуск: docker compose up --build
+# Пароль береться з файлу .env (він у .gitignore), приклад — .env.example
+services:
+  db:
+    image: postgres:16.6-bookworm
+    environment:
+      POSTGRES_DB: notes
+      POSTGRES_USER: notes
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # дані переживають docker compose down
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notes -d notes"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: db            # ім'я сервісу = DNS-ім'я в мережі compose
+      DB_PORT: "5432"
+      DB_NAME: notes
+      DB_USER: notes
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_VERSION: local
+    depends_on:
+      db:
+        condition: service_healthy   # чекати не лише старту, а готовності БД
+
+volumes:
+  pgdata:

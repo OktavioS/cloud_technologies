@@ -1,0 +1,3 @@
+# Скопіюй у terraform.tfvars (він у .gitignore) і заповни
+github_repo  = "your-github-login/cloud-lab1"
+budget_email = "you@example.com"

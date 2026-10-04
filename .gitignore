@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+
+# Terraform: state і секретні змінні не комітимо
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
