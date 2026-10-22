@@ -12,9 +12,9 @@
 
 **Застосунок:** Notes API — REST API для нотаток (Python, FastAPI + PostgreSQL), з документацією Swagger на `/docs`.
 
-**Публічна адреса:** `http://<ALB_DNS>` ← буде додано після `terraform apply`
+**Публічна адреса:** http://cloudlab1-alb-491227470.eu-north-1.elb.amazonaws.com (Swagger: http://cloudlab1-alb-491227470.eu-north-1.elb.amazonaws.com/docs)
 
-**Хмара:** AWS (`eu-central-1`) — ECR, RDS PostgreSQL у приватній підмережі, ECS Fargate за Application Load Balancer; уся інфраструктура в Terraform; автоматичний деплой через GitHub Actions з OIDC (без збережених ключів).
+**Хмара:** AWS (`eu-north-1`) — ECR, RDS PostgreSQL у приватній підмережі, ECS Fargate за Application Load Balancer; уся інфраструктура в Terraform; автоматичний деплой через GitHub Actions з OIDC (без збережених ключів).
 
 Детальний опис, архітектура, ендпоінти й інструкції запуску — у [`Lab1/README.md`](Lab1/README.md).
 

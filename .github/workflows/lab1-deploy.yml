@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: eu-central-1
+  AWS_REGION: eu-north-1
   ECR_REPOSITORY: cloudlab1-app
   ECS_CLUSTER: cloudlab1-cluster
   ECS_SERVICE: cloudlab1-service

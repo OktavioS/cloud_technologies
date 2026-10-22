@@ -4,8 +4,8 @@ REST API для нотаток (FastAPI + PostgreSQL), розгорнутий в
 ECS Fargate за Application Load Balancer, керована база RDS PostgreSQL у приватній підмережі,
 образи в приватному ECR, автоматичний деплой з GitHub Actions через OIDC.
 
-**Публічна адреса:** `http://<ALB_DNS>` ← вставити вивід `terraform output app_url`
-**Swagger UI:** `http://<ALB_DNS>/docs`
+**Публічна адреса:** http://cloudlab1-alb-491227470.eu-north-1.elb.amazonaws.com
+**Swagger UI:** http://cloudlab1-alb-491227470.eu-north-1.elb.amazonaws.com/docs
 
 ## Ендпоінти
 
@@ -77,7 +77,7 @@ terraform apply -target=aws_ecr_repository.app
 
 # 2. Перший образ з тегом bootstrap
 REPO=$(terraform output -raw ecr_repository_url)
-aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin ${REPO%%/*}
+aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin ${REPO%%/*}
 docker build -t $REPO:bootstrap .. && docker push $REPO:bootstrap
 
 # 3. Уся інфраструктура (~10 хв, найдовше — RDS)
