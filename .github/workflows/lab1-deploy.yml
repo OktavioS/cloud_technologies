@@ -1,9 +1,14 @@
-name: Deploy to AWS ECS
+name: Lab 1 - Deploy to AWS ECS
 
 on:
   push:
     branches: [main]
-    paths-ignore: ["README.md", "terraform/**"]
+    # Запускатися лише коли змінено код Лаби 1 (не терраформ і не README)
+    paths:
+      - "Lab1/**"
+      - "!Lab1/terraform/**"
+      - "!Lab1/README.md"
+      - ".github/workflows/lab1-deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -36,11 +41,12 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build & push image (tag = commit SHA)
+        # Контекст збірки — папка Lab1 (там Dockerfile)
         id: build
         env:
           IMAGE: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
         run: |
-          docker build -t "$IMAGE" .
+          docker build -t "$IMAGE" Lab1
           docker push "$IMAGE"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
