@@ -22,7 +22,7 @@ variable "github_repo" {
 }
 
 variable "budget_email" {
-  description = "Email для сповіщень бюджету"
+  description = "Email для сповіщень: бюджет і алерти моніторингу"
   type        = string
 }
 

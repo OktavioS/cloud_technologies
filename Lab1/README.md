@@ -9,16 +9,30 @@ ECS Fargate за Application Load Balancer, керована база RDS Postgr
 
 ## Ендпоінти
 
+🔒 — потрібен заголовок `Authorization: Bearer <токен>`, без нього відповідь **401**.
+
 | Метод | Шлях | Опис |
 |---|---|---|
 | GET | `/` | Інформація про сервіс і версію (хеш коміту) |
 | GET | `/health` | Health check (процес + з'єднання з БД) |
+| POST | `/auth/register` | Реєстрація `{"username": "...", "password": "..."}` (пароль ≥ 8 символів) |
+| POST | `/auth/login` | Вхід → `{"access_token": "...", "token_type": "bearer"}` (токен діє 60 хв) |
+| GET 🔒 | `/auth/me` | Хто я (ім'я з токена) |
 | GET | `/notes` | Список нотаток |
 | GET | `/notes/{id}` | Одна нотатка |
-| POST | `/notes` | Створити `{"title": "...", "body": "..."}` |
-| PUT | `/notes/{id}` | Оновити |
-| DELETE | `/notes/{id}` | Видалити |
-| GET | `/docs` | Swagger UI (OpenAPI) |
+| POST 🔒 | `/notes` | Створити `{"title": "...", "body": "..."}` |
+| PUT 🔒 | `/notes/{id}` | Оновити |
+| DELETE 🔒 | `/notes/{id}` | Видалити |
+| GET | `/debug/error` | Навмисна помилка 500 — для демонстрації алерту на 5xx |
+| GET | `/docs` | Swagger UI (OpenAPI), кнопка **Authorize** для токена |
+
+## Бонусні завдання
+
+**6. Безпека доступу (JWT).** Сервіс сам видає і перевіряє JWT (HS256, PyJWT). Паролі в БД лише як сіль + хеш PBKDF2-SHA256. Ключ підпису `JWT_SECRET` генерує AWS і зберігає в Secrets Manager (`terraform/auth.tf`), у контейнер він потрапляє як змінна середовища через `secrets` у task definition.
+
+**7. Моніторинг** (`terraform/monitoring.tf`). Логи застосунку — CloudWatch Logs `/ecs/cloudlab1-app`. Дашборд `cloudlab1-dashboard`: кількість запитів, помилки 5xx, латентність (середня і p95), CPU/пам'ять контейнера, стан алертів, останні логи. Алерти з доставкою на email через SNS: помилки 5xx і відсутність здорових контейнерів. Посилання на дашборд: `terraform output dashboard_url`.
+
+**8. Документація API.** Swagger UI на `/docs`.
 
 ## Архітектура
 
@@ -54,6 +68,8 @@ Lab1/
     ecs.tf          — кластер, IAM-ролі, task definition, сервіс, логи CloudWatch
     github_oidc.tf  — OIDC-провайдер GitHub і роль для CI/CD
     budget.tf       — бюджет зі сповіщеннями на email
+    auth.tf         — секрет для підпису JWT (бонус 6)
+    monitoring.tf   — дашборд CloudWatch, алерти, SNS (бонус 7)
     outputs.tf
 ```
 

@@ -30,16 +30,19 @@ resource "aws_iam_role_policy_attachment" "execution_managed" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Найменші привілеї: читати лише один конкретний секрет
+# Найменші привілеї: читати лише два конкретні секрети
 resource "aws_iam_role_policy" "execution_db_secret" {
   name = "read-db-secret"
   role = aws_iam_role.execution.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
-      Resource = aws_db_instance.main.master_user_secret[0].secret_arn
+      Effect = "Allow"
+      Action = ["secretsmanager:GetSecretValue"]
+      Resource = [
+        aws_db_instance.main.master_user_secret[0].secret_arn, # пароль БД
+        aws_secretsmanager_secret.jwt.arn,                     # ключ JWT (бонус 6)
+      ]
     }]
   })
 }
@@ -83,6 +86,7 @@ resource "aws_ecs_task_definition" "app" {
     # Пароль підставляється з Secrets Manager у змінну середовища під час старту задачі
     secrets = [
       { name = "DB_PASSWORD", valueFrom = "${aws_db_instance.main.master_user_secret[0].secret_arn}:password::" },
+      { name = "JWT_SECRET", valueFrom = aws_secretsmanager_secret.jwt.arn },
     ]
 
     logConfiguration = {

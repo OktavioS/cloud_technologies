@@ -15,3 +15,8 @@ output "github_deploy_role_arn" {
 output "db_endpoint" {
   value = aws_db_instance.main.address
 }
+
+output "dashboard_url" {
+  description = "Дашборд моніторингу (бонус 7)"
+  value       = "https://${var.region}.console.aws.amazon.com/cloudwatch/home?region=${var.region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
+}

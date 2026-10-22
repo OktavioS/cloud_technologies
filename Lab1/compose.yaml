@@ -25,6 +25,7 @@ services:
       DB_NAME: notes
       DB_USER: notes
       DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}   # ключ підпису токенів (бонус 6)
       APP_VERSION: local
     depends_on:
       db:
