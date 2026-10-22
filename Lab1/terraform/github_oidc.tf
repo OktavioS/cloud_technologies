@@ -1,5 +1,10 @@
 # GitHub Actions отримує тимчасові облікові дані через OIDC — без збережених ключів.
 
+locals {
+  gh_owner = split("/", var.github_repo)[0] # OktavioS
+  gh_name  = split("/", var.github_repo)[1] # cloud_technologies
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
@@ -20,11 +25,16 @@ data "aws_iam_policy_document" "github_assume" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Trust policy: роль може взяти лише гілка main цього репозиторію
+    # Trust policy: роль може взяти лише гілка main цього репозиторію.
+    # GitHub має два формати sub: старий "repo:owner/name:ref:..." і новий
+    # з незмінними ID "repo:owner@<id>/name@<id>:ref:..." — приймаємо обидва.
     condition {
-      test     = "StringEquals"
+      test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      values = [
+        "repo:${var.github_repo}:ref:refs/heads/main",
+        "repo:${local.gh_owner}@*/${local.gh_name}@*:ref:refs/heads/main",
+      ]
     }
   }
 }
