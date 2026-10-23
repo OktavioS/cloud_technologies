@@ -74,7 +74,7 @@ async def lifespan(_: FastAPI):
     pool.close()
 
 
-app = FastAPI(title="Notes API", version=APP_VERSION, lifespan=lifespan)
+app = FastAPI(title="Notes API v2.0", version=APP_VERSION, lifespan=lifespan)
 
 
 # ---------- Автентифікація ----------
