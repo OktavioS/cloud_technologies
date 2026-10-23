@@ -1,2 +1,6 @@
 # Особисті нотатки (шпаргалка команд) — не для репозиторію
 cloud-cheatsheet.md
+
+# Налаштування редакторів коду (PyCharm/IntelliJ, VS Code)
+.idea/
+.vscode/
