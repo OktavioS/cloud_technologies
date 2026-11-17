@@ -1,27 +1,34 @@
-name: Lab 1 - Deploy to AWS ECS
+name: Lab 1-2 - Deploy to AWS ECS
 
 on:
   push:
     branches: [main]
-    # Запускатися лише коли змінено код Лаби 1 (не терраформ і не README)
     paths:
       - "Lab1/**"
       - "!Lab1/terraform/**"
+      - "!Lab1/docs/**"
+      - "!Lab1/loadtest/**"
+      - "!Lab1/tests/**"
       - "!Lab1/README.md"
       - ".github/workflows/lab1-deploy.yml"
   workflow_dispatch:
 
 permissions:
-  id-token: write   # потрібен для OIDC-токена
+  id-token: write
   contents: read
+
+concurrency:
+  group: lab1-deploy
+  cancel-in-progress: false
 
 env:
   AWS_REGION: eu-north-1
   ECR_REPOSITORY: cloudlab1-app
   ECS_CLUSTER: cloudlab1-cluster
-  ECS_SERVICE: cloudlab1-service
-  TASK_FAMILY: cloudlab1-app
-  CONTAINER_NAME: app
+  APP_SERVICE: cloudlab1-service
+  APP_FAMILY: cloudlab1-app
+  WORKER_SERVICE: cloudlab1-worker
+  WORKER_FAMILY: cloudlab1-worker
 
 jobs:
   deploy:
@@ -30,7 +37,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC, без ключів)
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
@@ -40,8 +47,7 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & push image (tag = commit SHA)
-        # Контекст збірки — папка Lab1 (там Dockerfile)
+      - name: Build and push image (tag = commit SHA)
         id: build
         env:
           IMAGE: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
@@ -50,25 +56,43 @@ jobs:
           docker push "$IMAGE"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      - name: Download current task definition
+      - name: Download current task definitions
         run: |
-          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" \
-            --query taskDefinition > task-definition.json
+          aws ecs describe-task-definition --task-definition "$APP_FAMILY" --query taskDefinition > app-task-definition.json
+          aws ecs describe-task-definition --task-definition "$WORKER_FAMILY" --query taskDefinition > worker-task-definition.json
 
-      - name: Put new image into task definition
-        id: render
+      - name: Render app task definition
+        id: render-app
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
-          container-name: ${{ env.CONTAINER_NAME }}
+          task-definition: app-task-definition.json
+          container-name: app
           image: ${{ steps.build.outputs.image }}
           environment-variables: |
             APP_VERSION=${{ github.sha }}
 
-      - name: Deploy to ECS
+      - name: Render worker task definition
+        id: render-worker
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: worker-task-definition.json
+          container-name: worker
+          image: ${{ steps.build.outputs.image }}
+          environment-variables: |
+            APP_VERSION=${{ github.sha }}
+
+      - name: Deploy worker
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.render.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
+          task-definition: ${{ steps.render-worker.outputs.task-definition }}
+          service: ${{ env.WORKER_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Deploy app
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-app.outputs.task-definition }}
+          service: ${{ env.APP_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true

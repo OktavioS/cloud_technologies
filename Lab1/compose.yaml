@@ -1,35 +1,79 @@
-# Локальний запуск: docker compose up --build
-# Пароль береться з файлу .env (він у .gitignore), приклад — .env.example
+x-app-env: &app-env
+  DB_HOST: db
+  DB_PORT: "5432"
+  DB_NAME: notes
+  DB_USER: notes
+  DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+  REDIS_URL: redis://redis:6379/0
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+  CACHE_TTL_SECONDS: "30"
+  SQS_QUEUE_NAME: notes-jobs
+  SQS_ENDPOINT_URL: http://elasticmq:9324
+  AWS_REGION: eu-north-1
+  AWS_ACCESS_KEY_ID: local
+  AWS_SECRET_ACCESS_KEY: local
+  APP_VERSION: local
+
 services:
   db:
     image: postgres:16.6-bookworm
     environment:
       POSTGRES_DB: notes
       POSTGRES_USER: notes
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data   # дані переживають docker compose down
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U notes -d notes"]
       interval: 3s
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:7.4.1-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:1.6.16
+
   app:
     build: .
     ports:
       - "8000:8000"
     environment:
-      DB_HOST: db            # ім'я сервісу = DNS-ім'я в мережі compose
-      DB_PORT: "5432"
-      DB_NAME: notes
-      DB_USER: notes
-      DB_PASSWORD: ${DB_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}   # ключ підпису токенів (бонус 6)
-      APP_VERSION: local
+      <<: *app-env
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
     depends_on:
       db:
-        condition: service_healthy   # чекати не лише старту, а готовності БД
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticmq:
+        condition: service_started
+
+  worker:
+    build: .
+    command: ["python", "worker.py"]
+    stop_grace_period: 30s
+    environment:
+      <<: *app-env
+      SERVICE_NAME: worker
+      WORK_DELAY_MS: "200"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticmq:
+        condition: service_started
 
 volumes:
   pgdata:

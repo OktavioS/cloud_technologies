@@ -1,14 +1,13 @@
 resource "aws_ecr_repository" "app" {
   name                 = "${var.project}-app"
-  image_tag_mutability = "IMMUTABLE" # тег = хеш коміту, перезаписувати не можна
-  force_delete         = true        # щоб terraform destroy прибрав і образи
+  image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
   }
 }
 
-# Тримаємо лише 10 останніх образів
 resource "aws_ecr_lifecycle_policy" "app" {
   repository = aws_ecr_repository.app.name
   policy = jsonencode({

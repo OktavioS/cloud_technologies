@@ -1,3 +1,2 @@
-# Скопіюй у terraform.tfvars (він у .gitignore) і заповни
 github_repo  = "OktavioS/cloud_technologies"
 budget_email = "you@example.com"

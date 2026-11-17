@@ -1,8 +1,6 @@
-# GitHub Actions отримує тимчасові облікові дані через OIDC — без збережених ключів.
-
 locals {
-  gh_owner = split("/", var.github_repo)[0] # OktavioS
-  gh_name  = split("/", var.github_repo)[1] # cloud_technologies
+  gh_owner = split("/", var.github_repo)[0]
+  gh_name  = split("/", var.github_repo)[1]
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -25,9 +23,6 @@ data "aws_iam_policy_document" "github_assume" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Trust policy: роль може взяти лише гілка main цього репозиторію.
-    # GitHub має два формати sub: старий "repo:owner/name:ref:..." і новий
-    # з незмінними ID "repo:owner@<id>/name@<id>:ref:..." — приймаємо обидва.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
@@ -69,19 +64,23 @@ resource "aws_iam_role_policy" "github_deploy" {
         Sid      = "EcsTaskDef"
         Effect   = "Allow"
         Action   = ["ecs:DescribeTaskDefinition", "ecs:RegisterTaskDefinition"]
-        Resource = "*" # ці дії не підтримують обмеження за ресурсом
+        Resource = "*"
       },
       {
         Sid      = "EcsDeploy"
         Effect   = "Allow"
         Action   = ["ecs:UpdateService", "ecs:DescribeServices"]
-        Resource = aws_ecs_service.app.id
+        Resource = [aws_ecs_service.app.id, aws_ecs_service.worker.id]
       },
       {
-        Sid      = "PassTaskRoles"
-        Effect   = "Allow"
-        Action   = ["iam:PassRole"]
-        Resource = [aws_iam_role.execution.arn, aws_iam_role.task.arn]
+        Sid    = "PassTaskRoles"
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
+        Resource = [
+          aws_iam_role.execution.arn,
+          aws_iam_role.app_task.arn,
+          aws_iam_role.worker_task.arn,
+        ]
       },
     ]
   })
