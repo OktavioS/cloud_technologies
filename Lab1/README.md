@@ -5,7 +5,8 @@ REST API для нотаток (FastAPI + PostgreSQL), розгорнутий в
 - **Лаба 1:** контейнер, ECS Fargate за Application Load Balancer, RDS PostgreSQL у приватній підмережі, ECR, CI/CD з GitHub Actions через OIDC; бонуси JWT, моніторинг, Swagger.
 - **Лаба 2:** у **тому самому Terraform-проєкті й репозиторії** (так вимагає умова): автомасштабування, навантажувальний тест, панель моніторингу, сповіщення, кешування; бонуси черга, ідемпотентність, масштабування за розкладом.
 
-**Публічна адреса:** ⏳ після `terraform apply` (`terraform output app_url`); Swagger — `<адреса>/docs`.
+**Публічна адреса:** http://cloudlab1-alb-408578762.eu-north-1.elb.amazonaws.com
+**Swagger UI:** http://cloudlab1-alb-408578762.eu-north-1.elb.amazonaws.com/docs
 
 > **Як усе підняти, запустити й перевірити кожну вимогу** — розділ «Інструкція» нижче.
 
