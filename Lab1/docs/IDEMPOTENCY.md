@@ -40,17 +40,17 @@ POST /notes  Idempotency-Key: K  (тіло B)
 
 Кожен тест реєструє нового користувача, тому кількість записів у базі перевіряється через `GET /users/{id}` → `notes_count`.
 
-Результат локального прогону:
+Результат прогону проти хмари (18.11.2026, `.\tests\run.ps1`, адреса `http://cloudlab1-alb-754314395.eu-north-1.elb.amazonaws.com`):
 
 ```
 tests/test_idempotency.py::test_same_key_creates_one_note_and_same_response PASSED
 tests/test_idempotency.py::test_without_key_creates_two_notes PASSED
 tests/test_idempotency.py::test_same_key_with_different_body_is_rejected PASSED
 tests/test_idempotency.py::test_async_same_key_returns_same_job_and_one_note PASSED
-4 passed
+4 passed in 6.14s
 ```
 
-> ⏳ Додати вивід прогону проти хмари (`.\tests\run.ps1`).
+Локально (`.\tests\run.ps1 -Local`, docker compose) — так само `4 passed`.
 
 ## Яку проблему це розв'язує
 

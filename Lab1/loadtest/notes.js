@@ -35,8 +35,11 @@ export const options = {
     'http_req_duration{kind:read}': ['p(95)<1500'],
     'http_req_duration{kind:write}': ['p(95)<3000'],
   },
+  setupTimeout: '3m',
   summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
+
+const USERS = parseInt(__ENV.USERS || '5', 10);
 
 const session = { token: null, userId: null, recentIds: [], lastJob: null };
 
@@ -48,19 +51,23 @@ function params(name, kind, extraHeaders) {
   return { headers, tags: { name, kind } };
 }
 
-function signIn() {
-  const username = `k6_${LABEL}_${exec.vu.idInTest}_${Date.now()}`.slice(0, 50);
-  const credentials = JSON.stringify({ username, password: 'load-test-password' });
-  const registered = http.post(`${BASE_URL}/auth/register`, credentials, params('POST /auth/register', 'auth'));
-  if (!check(registered, { 'register 201': (r) => r.status === 201 })) {
-    fail(`register failed: ${registered.status}`);
+export function setup() {
+  const users = [];
+  const stamp = Date.now();
+  for (let i = 0; i < USERS; i++) {
+    const credentials = JSON.stringify({ username: `k6_${LABEL}_${stamp}_${i}`.slice(0, 50), password: 'load-test-password' });
+    const headers = { headers: { 'Content-Type': 'application/json' }, tags: { name: 'setup', kind: 'setup' } };
+    const registered = http.post(`${BASE_URL}/auth/register`, credentials, headers);
+    if (registered.status !== 201) {
+      fail(`register failed: ${registered.status}`);
+    }
+    const login = http.post(`${BASE_URL}/auth/login`, credentials, headers);
+    if (login.status !== 200) {
+      fail(`login failed: ${login.status}`);
+    }
+    users.push({ token: login.json('access_token'), userId: login.json('user_id') });
   }
-  const login = http.post(`${BASE_URL}/auth/login`, credentials, params('POST /auth/login', 'auth'));
-  if (!check(login, { 'login 200': (r) => r.status === 200 })) {
-    fail(`login failed: ${login.status}`);
-  }
-  session.token = login.json('access_token');
-  session.userId = login.json('user_id');
+  return { users };
 }
 
 function idempotencyKey() {
@@ -131,9 +138,11 @@ function pause() {
   sleep(THINK * (0.5 + Math.random()));
 }
 
-export default function () {
+export default function (data) {
   if (!session.token) {
-    signIn();
+    const user = data.users[(exec.vu.idInTest - 1) % data.users.length];
+    session.token = user.token;
+    session.userId = user.userId;
   }
 
   const createdId = writeNote();
@@ -201,7 +210,7 @@ function report(data) {
     '',
     `- Адреса: ${BASE_URL}`,
     `- Режим запису: ${MODE}`,
-    `- Профіль: 0 → ${VUS} VU за ${RAMP_UP}, ${VUS} VU ${STEADY}, ${VUS} → 0 за ${RAMP_DOWN}; пауза між запитами ~${THINK} с`,
+    `- Профіль: 0 → ${VUS} VU за ${RAMP_UP}, ${VUS} VU ${STEADY}, ${VUS} → 0 за ${RAMP_DOWN}; пауза між запитами ~${THINK} с; ${USERS} тестових акаунтів`,
     `- Початок (UTC): ${started}`,
     `- Тривалість: ${(data.state.testRunDurationMs / 60000).toFixed(1)} хв`,
     '',

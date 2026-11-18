@@ -5,8 +5,8 @@ REST API для нотаток (FastAPI + PostgreSQL), розгорнутий в
 - **Лаба 1:** контейнер, ECS Fargate за Application Load Balancer, RDS PostgreSQL у приватній підмережі, ECR, CI/CD з GitHub Actions через OIDC; бонуси JWT, моніторинг, Swagger.
 - **Лаба 2:** у **тому самому Terraform-проєкті й репозиторії** (так вимагає умова): автомасштабування, навантажувальний тест, панель моніторингу, сповіщення, кешування; бонуси черга, ідемпотентність, масштабування за розкладом.
 
-**Публічна адреса:** http://cloudlab1-alb-408578762.eu-north-1.elb.amazonaws.com
-**Swagger UI:** http://cloudlab1-alb-408578762.eu-north-1.elb.amazonaws.com/docs
+**Публічна адреса:** http://cloudlab1-alb-754314395.eu-north-1.elb.amazonaws.com
+**Swagger UI:** http://cloudlab1-alb-754314395.eu-north-1.elb.amazonaws.com/docs
 
 > **Як усе підняти, запустити й перевірити кожну вимогу** — розділ «Інструкція» нижче.
 
@@ -190,6 +190,8 @@ terraform output
 
 Чому образ спершу з тегом `bootstrap`: ECS-сервісу потрібен образ у момент створення, а CI ще жодного разу не запускався. Далі всі образи кладе CI з тегом = SHA коміту.
 
+> Після `terraform destroy` реєстр видаляється разом з образами, тож після нового `apply` сервіси не стартують (`CannotPullContainerError … not found`), доки в реєстрі немає образу. Замість ручного `bootstrap` можна одразу запустити CI: GitHub → **Actions → Lab 1-2 - Deploy to AWS ECS → Run workflow** — він збере образ з тегом SHA і задеплоїть обидва сервіси.
+
 ### 3. GitHub (CI/CD)
 
 GitHub → **Settings → Secrets and variables → Actions → Variables**: `AWS_ROLE_ARN` = `terraform output -raw github_deploy_role_arn` (ім'я ролі не змінюється, тож після повторного `apply` значення те саме).
@@ -271,7 +273,7 @@ aws ecs describe-services --cluster cloudlab1-cluster --services cloudlab1-servi
 
 **Б7 — ідемпотентність:** `.\tests\run.ps1` → `4 passed`.
 
-**Б8 — розклад:** [`docs/SCHEDULE.md`](docs/SCHEDULE.md), `terraform apply -var="enable_schedule=true"`.
+**Б8 — розклад:** [`docs/SCHEDULE.md`](docs/SCHEDULE.md), `terraform apply -var="enable_schedule=true"` (для демонстрації — з тестовим часом, команда в цьому файлі).
 
 Звіти k6 зберігаються в `loadtest\results\<Label>.md`; числа з них переносяться в `docs/`.
 

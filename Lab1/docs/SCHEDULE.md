@@ -17,15 +17,35 @@ terraform apply -var="enable_schedule=true"
 aws application-autoscaling describe-scheduled-actions --service-namespace ecs --query "ScheduledActions[].[ScheduledActionName,Schedule,Timezone,ScalableTargetAction]"
 ```
 
-Для швидкої демонстрації на захисті можна поставити найближчі хвилини, наприклад:
+### Перевірка (18.11.2026)
+
+Щоб не чекати до 08:00 і 23:00, розклад увімкнули з тестовим часом — «день» через 3 хв, «ніч» через 7 хв:
 
 ```powershell
-terraform apply -var="enable_schedule=true" -var="day_start_cron=cron(35 14 * * ? *)" -var="night_start_cron=cron(45 14 * * ? *)"
+$day = (Get-Date).AddMinutes(3); $night = (Get-Date).AddMinutes(7)
+terraform apply -var="enable_schedule=true" -var="day_start_cron=cron($($day.Minute) $($day.Hour) * * ? *)" -var="night_start_cron=cron($($night.Minute) $($night.Hour) * * ? *)"
 ```
 
-Через хвилину після 14:35 на графіку 1 панелі `desired` стане 2, після 14:45 — 1 (вилучення пройде за звичайними правилами scale-in).
+`terraform plan` — `2 to add` (лише дві дії розкладу), `describe-scheduled-actions`:
 
-> Після вимкнення розкладу (`enable_schedule=false`) Terraform поверне `min_capacity` до `app_min_tasks` наступним `apply`. Поки розклад увімкнений, `terraform plan` може показувати зміну `min_capacity` таргета: це розклад змінив його в AWS. Це очікувано.
+```
+|  cloudlab1-app-day   |  cron(15 18 * * ? *)  |  Europe/Kiev |
+|  cloudlab1-app-night |  cron(19 18 * * ? *)  |  Europe/Kiev |
+```
+
+Історія масштабування (`aws application-autoscaling describe-scaling-activities`):
+
+| Час | Подія |
+|---|---|
+| 18:15:43 | дія «день»: мінімум 2 → `Setting desired count to 2` |
+| 18:19:40 | дія «ніч»: `Setting min capacity to 1 and max capacity to 4` |
+| 18:20:12 | `Setting desired count to 1` |
+
+Друга задача з'явилася одразу після дії «день» (без навантаження — лише через новий мінімум). Після дії «ніч» вона зникла вже за 32 с: CPU весь цей час був ~0 %, тож внутрішній алерт вилучення target tracking уже перебував у стані ALARM і чекав лише, поки мінімум дозволить зменшити кількість.
+
+![Масштабування за розкладом: день → 2 задачі, ніч → 1](img/schedule.png)
+
+Ліва частина графіка (17:38–17:45) — вилучення задач після попереднього навантажувального прогону, до розкладу не належить.
 
 ### Чому вночі 1, а не 0
 
